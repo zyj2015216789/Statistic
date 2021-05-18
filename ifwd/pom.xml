@@ -27,13 +27,13 @@
     </parent>
 
     <artifactId>onos-app-ifwd</artifactId>
-    <version>1.9.0-SNAPSHOT</version>
+    <version>1.8.0-SNAPSHOT</version>
     <packaging>bundle</packaging>
 
     <description>Reactive forwarding application using intent service (experimental)</description>
 
     <properties>
-        <onos.version>1.8.0</onos.version>
+        <onos.version>2.0.0</onos.version>
         <onos.app.name>org.onosproject.ifwd</onos.app.name>
         <onos.app.origin>ON.Lab</onos.app.origin>
         <onos.app.title>Reactive Forwarding App (Intent)</onos.app.title>
@@ -49,6 +49,17 @@
             <version>${onos.version}</version>
         </dependency>
 
+        <dependency>
+            <groupId>org.onosproject</groupId>
+            <artifactId>onos-core-common</artifactId>
+            <version>${parent.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.felix</groupId>
+            <artifactId>org.apache.felix.scr.annotations</artifactId>
+        </dependency>
+
     </dependencies>
 
     <build>
@@ -56,6 +67,7 @@
             <plugin>
                 <groupId>org.apache.felix</groupId>
                 <artifactId>maven-bundle-plugin</artifactId>
+     
             </plugin>
             <plugin>
                 <groupId>org.apache.felix</groupId>
@@ -69,3 +81,5 @@
     </build>
 
 </project>
+
+

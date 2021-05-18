@@ -14,12 +14,24 @@
  * limitations under the License.
  */
 package org.onosproject.ifwd;
+import org.osgi.service.component.annotations.Activate;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferenceCardinality;
 
-import org.apache.felix.scr.annotations.Activate;
-import org.apache.felix.scr.annotations.Component;
-import org.apache.felix.scr.annotations.Deactivate;
-import org.apache.felix.scr.annotations.Reference;
-import org.apache.felix.scr.annotations.ReferenceCardinality;
+import org.onosproject.net.Device;
+import org.onosproject.net.DeviceId;
+import org.onosproject.net.Port;
+import org.onosproject.net.device.DeviceService;
+import org.onosproject.net.device.PortStatistics;
+import org.onosproject.net.flow.FlowEntry;
+import org.onosproject.net.flow.FlowRuleService;
+import org.onosproject.net.flow.FlowRuleStore;
+import org.onosproject.net.link.LinkService;
+import org.onosproject.core.ApplicationId;
+import org.onosproject.core.CoreService;
+
 import org.onlab.packet.Ethernet;
 import org.onosproject.core.ApplicationId;
 import org.onosproject.core.CoreService;
@@ -28,7 +40,6 @@ import org.onosproject.net.HostId;
 import org.onosproject.net.PortNumber;
 import org.onosproject.net.flow.DefaultTrafficSelector;
 import org.onosproject.net.flow.DefaultTrafficTreatment;
-import org.onosproject.net.flow.FlowRuleService;
 import org.onosproject.net.flow.TrafficSelector;
 import org.onosproject.net.flow.TrafficTreatment;
 import org.onosproject.net.flowobjective.DefaultForwardingObjective;
@@ -47,39 +58,66 @@ import org.onosproject.net.packet.PacketPriority;
 import org.onosproject.net.packet.PacketProcessor;
 import org.onosproject.net.packet.PacketService;
 import org.onosproject.net.topology.TopologyService;
+
 import org.slf4j.Logger;
-
-import java.util.EnumSet;
-
 import static org.slf4j.LoggerFactory.getLogger;
+
+
+
+import org.w3c.dom.DOMImplementation;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Text;
+
+import javax.ws.rs.GET;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.transform.Result;
+import javax.xml.transform.Source;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+
+
+import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.EnumSet;
 
 /**
  * WORK-IN-PROGRESS: Sample reactive forwarding application using intent framework.
  */
 @Component(immediate = true)
 public class IntentReactiveForwarding {
-
     private final Logger log = getLogger(getClass());
+    //private final Logger log = LoggerFactory.getLogger(getClass());
 
-    @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
+    @Reference(cardinality = ReferenceCardinality.MANDATORY)
+    protected LinkService linkService;
+    @Reference(cardinality = ReferenceCardinality.MANDATORY)
+    protected DeviceService deviceService;
+
+    @Reference(cardinality = ReferenceCardinality.MANDATORY)
     protected CoreService coreService;
 
-    @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
+    @Reference(cardinality = ReferenceCardinality.MANDATORY)
     protected TopologyService topologyService;
 
-    @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
+    @Reference(cardinality = ReferenceCardinality.MANDATORY)
     protected PacketService packetService;
 
-    @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
+    @Reference(cardinality = ReferenceCardinality.MANDATORY)
     protected IntentService intentService;
 
-    @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
+    @Reference(cardinality = ReferenceCardinality.MANDATORY)
     protected HostService hostService;
 
-    @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
+    @Reference(cardinality = ReferenceCardinality.MANDATORY)
     protected FlowRuleService flowRuleService;
 
-    @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
+    @Reference(cardinality = ReferenceCardinality.MANDATORY)
     protected FlowObjectiveService flowObjectiveService;
 
     private ReactivePacketProcessor processor = new ReactivePacketProcessor();
@@ -93,13 +131,25 @@ public class IntentReactiveForwarding {
 
     @Activate
     public void activate() {
+        ArrayList<Integer> shortFlow = new ArrayList();
+        ArrayList<Integer> ruleCount = new ArrayList();
         appId = coreService.registerApplication("org.onosproject.ifwd");
 
         packetService.addProcessor(processor, PacketProcessor.director(2));
-
         TrafficSelector.Builder selector = DefaultTrafficSelector.builder();
         selector.matchEthType(Ethernet.TYPE_IPV4);
         packetService.requestPackets(selector.build(), PacketPriority.REACTIVE, appId);
+
+        for (int siempre = 0; siempre < 100; siempre++){
+            log.info("start statistic");
+            getStatistics(shortFlow, ruleCount);
+            try {
+                TimeUnit.SECONDS.sleep(10);
+            } catch (Exception e){
+                log.info(e.getMessage());
+            }
+            
+        }
 
         log.info("Started");
     }
@@ -110,11 +160,66 @@ public class IntentReactiveForwarding {
         processor = null;
         log.info("Stopped");
     }
+    public void getStatistics(ArrayList shortFlow, ArrayList ruleCount) {
+        Iterable<Device> devices = deviceService.getAvailableDevices(Device.Type.SWITCH);
+        // assume that the number of switches will not exceed 500
+        String[] switches = new String[500];
+        int a = 0;
+        for(Device d: devices){
+            int short_count = 0;
+            switches[a] = d.id().toString();
+            a++;
+            ruleCount.add(flowRuleService.getFlowRuleCount(d.id()));
+            Iterable<FlowEntry> flowEntry = flowRuleService.getFlowEntries(d.id());
+            for(FlowEntry f: flowEntry){
+                if(f.packets() < 3){
+                    short_count++;
+                }
+            }
+            shortFlow.add(short_count);
+        }
+        try{
+            log.info("generate statistics - INFO 1 | generate res.xml");
+            generateDoc(switches, shortFlow, ruleCount);
+        } catch (Exception e) {
+            log.info("geneerate statistics - ERROR 0| Error all generar *.xml");
+            log.info(e.getMessage());
+        }
+    }
 
+    public void generateDoc(String[] switchID, ArrayList<Integer>shortFlow, ArrayList<Integer> ruleCount) throws IOException {
+        File file = new File("/feature_static.txt");
+        if(!file.exists() && !file.isDirectory()){
+            file.mkdir();
+            try {
+                file.createNewFile();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        Writer out = new FileWriter(file,true);
+        BufferedWriter bw = new BufferedWriter(out);
+        for(int i = 0; i < shortFlow.size(); i++){
+            bw.write(switchID[i]+",");
+            bw.write(shortFlow.get(i)+",");
+            bw.write(ruleCount.get(i));
+            bw.newLine();
+            bw.flush();
+        }
+        bw.write("**************");
+        try {
+            bw.close();
+            out.close();
+        }catch(IOException e){
+            e.printStackTrace();
+        }
+
+
+    }
     /**
      * Packet processor responsible for forwarding packets along their paths.
      */
-    private class ReactivePacketProcessor implements PacketProcessor {
+     private class ReactivePacketProcessor implements PacketProcessor {
 
         @Override
         public void process(PacketContext context) {
@@ -230,5 +335,6 @@ public class IntentReactiveForwarding {
         }
 
     }
+    
 
 }
