@@ -85,7 +85,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.EnumSet;
-
+import java.util.HashMap;
+import org.apache.commons.lang3.tuple.*;
 /**
  * WORK-IN-PROGRESS: Sample reactive forwarding application using intent framework.
  */
@@ -128,11 +129,13 @@ public class IntentReactiveForwarding {
     private static final EnumSet<IntentState> WITHDRAWN_STATES = EnumSet.of(IntentState.WITHDRAWN,
                                                                             IntentState.WITHDRAWING,
                                                                             IntentState.WITHDRAW_REQ);
-
+    HashMap<String, Integer> packetCount = new HashMap<String, Integer>();
+    HashMap<String, Pair<Long,Long>>tokenCount = new HashMap<String, Pair<Long,Long>>();
     @Activate
     public void activate() {
         ArrayList<Integer> shortFlow = new ArrayList();
         ArrayList<Integer> ruleCount = new ArrayList();
+        // HashMap<String, Integer> packetCount = new HashMap<String, Integer>();
         appId = coreService.registerApplication("org.onosproject.ifwd");
 
         packetService.addProcessor(processor, PacketProcessor.director(2));
@@ -140,11 +143,14 @@ public class IntentReactiveForwarding {
         selector.matchEthType(Ethernet.TYPE_IPV4);
         packetService.requestPackets(selector.build(), PacketPriority.REACTIVE, appId);
 
-        for (int siempre = 0; siempre < 100; siempre++){
+        for (int siempre = 0; siempre < 10; siempre++){
             log.info("start statistic");
+            shortFlow.clear();
+            ruleCount.clear();
+            packetCount.clear();
             getStatistics(shortFlow, ruleCount);
             try {
-                TimeUnit.SECONDS.sleep(10);
+                TimeUnit.SECONDS.sleep(1);
             } catch (Exception e){
                 log.info(e.getMessage());
             }
@@ -160,21 +166,26 @@ public class IntentReactiveForwarding {
         processor = null;
         log.info("Stopped");
     }
+   
     public void getStatistics(ArrayList shortFlow, ArrayList ruleCount) {
         Iterable<Device> devices = deviceService.getAvailableDevices(Device.Type.SWITCH);
         // assume that the number of switches will not exceed 500
+        
         String[] switches = new String[500];
         int a = 0;
         for(Device d: devices){
             int short_count = 0;
             switches[a] = d.id().toString();
             a++;
-            ruleCount.add(flowRuleService.getFlowRuleCount(d.id()));
+            int ruleDevice = (int)(flowRuleService.getFlowRuleCount(d.id()));
+            //log.info("every device have the count rule : {}",ruleDevice);
+            ruleCount.add(ruleDevice);
             Iterable<FlowEntry> flowEntry = flowRuleService.getFlowEntries(d.id());
             for(FlowEntry f: flowEntry){
                 if(f.packets() < 3){
                     short_count++;
                 }
+                log.info("every flow count:{}",f.packets());
             }
             shortFlow.add(short_count);
         }
@@ -187,8 +198,8 @@ public class IntentReactiveForwarding {
         }
     }
 
-    public void generateDoc(String[] switchID, ArrayList<Integer>shortFlow, ArrayList<Integer> ruleCount) throws IOException {
-        File file = new File("/feature_static.txt");
+    public void generateDoc(String[] switchID, ArrayList<Integer>shortFlow, ArrayList<Integer>ruleCount) throws IOException {
+        File file = new File("/home/onos/onos/feature_static.txt");
         if(!file.exists() && !file.isDirectory()){
             file.mkdir();
             try {
@@ -199,14 +210,20 @@ public class IntentReactiveForwarding {
         }
         Writer out = new FileWriter(file,true);
         BufferedWriter bw = new BufferedWriter(out);
-        for(int i = 0; i < shortFlow.size(); i++){
+        for(int i = 0; i < ruleCount.size(); i++){
+            String key = switchID[i];
             bw.write(switchID[i]+",");
+            if(packetCount.containsKey(key)){
+                bw.write(packetCount.get(key)+",");
+            }else{
+                bw.write(0+",");
+            }
             bw.write(shortFlow.get(i)+",");
-            bw.write(ruleCount.get(i));
-            bw.newLine();
+            bw.write(ruleCount.get(i)+"\n");
+           // bw.newLine();
             bw.flush();
         }
-        bw.write("**************");
+        bw.write("**************\n");
         try {
             bw.close();
             out.close();
@@ -229,28 +246,56 @@ public class IntentReactiveForwarding {
                 return;
             }
             InboundPacket pkt = context.inPacket();
-            Ethernet ethPkt = pkt.parsed();
-
-            if (ethPkt == null) {
-                return;
+            String device = pkt.receivedFrom().deviceId().toString();
+            //String devicePort = pkt.receivedFrom().port().toString();
+            if(packetCount.containsKey(device)){
+                packetCount.put(device, packetCount.get(device) + 1);
+            }else {
+                packetCount.put(device, 1);
             }
+            
+            // before forwd, check the tokem
+            /*
+               readyQueue: 其实物理上不需要存在，直接只是去调用处理函数就可以了
+               waitQueue: 循环处理这里面的数据（如何保证丢失的话是低优先级被扔掉）
+               token的触发方式：每秒更新？使用的时候调用计算
+            */
+            long tokenNum = tokenCount.get(device).getLeft();
+            long newTime = new java.util.Date().getTime()/1000;
+            long timeUpdate = tokenCount.get(device).getRight() - newTime;
+            tokenNum += timeUpdate;
+            if(tokenNum > 0){
+                tokenNum--;
+                tokenCount.put(device, Pair.of(tokenNum, newTime));
+                //tokenCount.put(device, pair);
+                execute(context);
+            }else{
+                // 加入waitQueue
 
-            HostId srcId = HostId.hostId(ethPkt.getSourceMAC());
-            HostId dstId = HostId.hostId(ethPkt.getDestinationMAC());
-
-            // Do we know who this is for? If not, flood and bail.
-            Host dst = hostService.getHost(dstId);
-            if (dst == null) {
-                flood(context);
-                return;
             }
-
-            // Otherwise forward and be done with it.
-            setUpConnectivity(context, srcId, dstId);
-            forwardPacketToDst(context, dst);
+            
         }
     }
+    private void execute(PacketContext context){
+        InboundPacket pkt = context.inPacket();
+        Ethernet ethPkt = pkt.parsed();
+        if (ethPkt == null) {
+            return;
+        }
+        HostId srcId = HostId.hostId(ethPkt.getSourceMAC());
+        HostId dstId = HostId.hostId(ethPkt.getDestinationMAC());
 
+            // Do we know who this is for? If not, flood and bail.
+        Host dst = hostService.getHost(dstId);
+        if (dst == null) {
+            flood(context);
+            return;
+        }
+
+            // Otherwise forward and be done with it.
+        setUpConnectivity(context, srcId, dstId);
+        forwardPacketToDst(context, dst);
+    }
     // Floods the specified packet if permissible.
     private void flood(PacketContext context) {
         if (topologyService.isBroadcastPoint(topologyService.currentTopology(),
@@ -272,7 +317,7 @@ public class IntentReactiveForwarding {
         OutboundPacket packet = new DefaultOutboundPacket(dst.location().deviceId(),
                                                           treatment, context.inPacket().unparsed());
         packetService.emit(packet);
-        log.info("sending packet: {}", packet);
+        // log.info("sending packet: {}", packet);
     }
 
     // Install a rule forwarding the packet to the specified port.
