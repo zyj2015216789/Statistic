@@ -86,6 +86,8 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.LinkedList;
+
 import org.apache.commons.lang3.tuple.*;
 /**
  * WORK-IN-PROGRESS: Sample reactive forwarding application using intent framework.
@@ -271,7 +273,9 @@ public class IntentReactiveForwarding {
                 execute(context);
             }else{
                 // 加入waitQueue
-
+                // 首先是要查看自己的设备的grade
+                // grade 更新也要记得写，触发一次阈值，更新一次grade,同时调整waitQueue大小
+                HashMap<Integer,LinkedList<PacketContext>>waitHead;
             }
             
         }
