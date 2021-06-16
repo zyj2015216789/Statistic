@@ -41,7 +41,6 @@ import org.onosproject.net.HostId;
 import org.onosproject.net.Link;
 import org.onosproject.net.Path;
 import org.onosproject.net.PortNumber;
-import org.onosproject.net.device.DeviceService;
 import org.onosproject.net.flow.DefaultTrafficSelector;
 import org.onosproject.net.flow.DefaultTrafficTreatment;
 import org.onosproject.net.flow.FlowEntry;
@@ -122,8 +121,6 @@ import static org.onosproject.ifwd.OsgiPropertyConstants.RECORD_METRICS;
 import static org.onosproject.ifwd.OsgiPropertyConstants.RECORD_METRICS_DEFAULT;
 import static org.onosproject.ifwd.OsgiPropertyConstants.INHERIT_FLOW_TREATMENT;
 import static org.onosproject.ifwd.OsgiPropertyConstants.INHERIT_FLOW_TREATMENT_DEFAULT;
-
-import org.onosproject.ifwd.api.CounterService;
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**
@@ -131,8 +128,25 @@ import static org.slf4j.LoggerFactory.getLogger;
  */
 @Component(
     immediate = true,
-    service = ReactiveForwarding.class
-    
+    service = ReactiveForwarding.class,
+    property = {
+        PACKET_OUT_ONLY + ":Boolean=" + PACKET_OUT_ONLY_DEFAULT,
+        PACKET_OUT_OFPP_TABLE + ":Boolean=" + PACKET_OUT_OFPP_TABLE_DEFAULT,
+        FLOW_TIMEOUT + ":Integer=" + FLOW_TIMEOUT_DEFAULT,
+        FLOW_PRIORITY  + ":Integer=" + FLOW_PRIORITY_DEFAULT,
+        IPV6_FORWARDING + ":Boolean=" + IPV6_FORWARDING_DEFAULT,
+        MATCH_DST_MAC_ONLY + ":Boolean=" + MATCH_DST_MAC_ONLY_DEFAULT,
+        MATCH_VLAN_ID + ":Boolean=" + MATCH_VLAN_ID_DEFAULT,
+        MATCH_IPV4_ADDRESS + ":Boolean=" + MATCH_IPV4_ADDRESS_DEFAULT,
+        MATCH_IPV4_DSCP + ":Boolean=" + MATCH_IPV4_DSCP_DEFAULT,
+        MATCH_IPV6_ADDRESS + ":Boolean=" + MATCH_IPV6_ADDRESS_DEFAULT,
+        MATCH_IPV6_FLOW_LABEL + ":Boolean=" + MATCH_IPV6_FLOW_LABEL_DEFAULT,
+        MATCH_TCP_UDP_PORTS + ":Boolean=" + MATCH_TCP_UDP_PORTS_DEFAULT,
+        MATCH_ICMP_FIELDS + ":Boolean=" + MATCH_ICMP_FIELDS_DEFAULT,
+        IGNORE_IPV4_MCAST_PACKETS + ":Boolean=" + IGNORE_IPV4_MCAST_PACKETS_DEFAULT,
+        RECORD_METRICS + ":Boolean=" + RECORD_METRICS_DEFAULT,
+        INHERIT_FLOW_TREATMENT + ":Boolean=" + INHERIT_FLOW_TREATMENT_DEFAULT
+    }
 )
 public class ReactiveForwarding {
 
@@ -157,18 +171,10 @@ public class ReactiveForwarding {
     protected CoreService coreService;
 
     @Reference(cardinality = ReferenceCardinality.MANDATORY)
-    protected DeviceService deviceService;
-
-    //@Reference(cardinality = ReferenceCardinality.MANDATORY)
-    //protected ComponentConfigService cfgService;
+    protected ComponentConfigService cfgService;
 
     @Reference(cardinality = ReferenceCardinality.MANDATORY)
     protected StorageService storageService;
-
-    @Reference(cardinality = ReferenceCardinality.MANDATORY)
-    protected CounterService packetInCounter;
-
-    private CounterService.Counter globalCounter;
 
     private ReactivePacketProcessor processor = new ReactivePacketProcessor();
 
@@ -231,25 +237,25 @@ public class ReactiveForwarding {
 
     @Activate
     public void activate(ComponentContext context) {
+        log.info("Hello");
         KryoNamespace.Builder metricSerializer = KryoNamespace.newBuilder()
                 .register(KryoNamespaces.API)
                 .register(ReactiveForwardMetrics.class)
                 .register(MultiValuedTimestamp.class);
         metrics =  storageService.<MacAddress, ReactiveForwardMetrics>eventuallyConsistentMapBuilder()
-                .withName("metrics-fwd")
+                .withName("metrics-ifwd")
                 .withSerializer(metricSerializer)
                 .withTimestampProvider((key, metricsData) -> new
                         MultiValuedTimestamp<>(new WallClockTimestamp(), System.nanoTime()))
                 .build();
 
-        blackHoleExecutor = newSingleThreadExecutor(groupedThreads("ifwd",
+        blackHoleExecutor = newSingleThreadExecutor(groupedThreads("onos/app/ifwd",
                                                                    "black-hole-fixer",
                                                                    log));
 
-        //cfgService.registerProperties(getClass());
+       // cfgService.registerProperties(getClass());
         appId = coreService.registerApplication("org.onosproject.ifwd");
-        //globalCounter = packetInCounter.getCommonCounter("global pkt-in");
-
+        
         packetService.addProcessor(processor, PacketProcessor.director(2));
         topologyService.addListener(topologyListener);
         readComponentConfiguration(context);
@@ -455,10 +461,10 @@ public class ReactiveForwarding {
         }
 
         flowTimeout = Tools.getIntegerProperty(properties, FLOW_TIMEOUT, FLOW_TIMEOUT_DEFAULT);
-        //log.info("Configured. Flow Timeout is configured to {} seconds", flowTimeout);
+        // log.info("Configured. Flow Timeout is configured to {} seconds", flowTimeout);
 
         flowPriority = Tools.getIntegerProperty(properties, FLOW_PRIORITY, FLOW_PRIORITY_DEFAULT);
-       // log.info("Configured. Flow Priority is configured to {}", flowPriority);
+        // log.info("Configured. Flow Priority is configured to {}", flowPriority);
 
         Boolean inheritFlowTreatmentEnabled =
                 Tools.isPropertyEnabled(properties, INHERIT_FLOW_TREATMENT);
@@ -518,7 +524,7 @@ public class ReactiveForwarding {
                 return;
             }
 
-            // Do not process IPv4 multicast packets, let mifwd handle them
+            // Do not process IPv4 multicast packets, let mfwd handle them
             if (ignoreIPv4Multicast && ethPkt.getEtherType() == Ethernet.TYPE_IPV4) {
                 if (id.mac().isMulticast()) {
                     return;
