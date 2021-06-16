@@ -1,5 +1,5 @@
 Manifest-Version: 1.0
-Bnd-LastModified: 1623751370361
+Bnd-LastModified: 1623808390290
 Build-Jdk: 11.0.11
 Built-By: root
 Bundle-Description: Reactive forwarding application using intent service
@@ -25,6 +25,7 @@ Import-Package:
  org.onosproject.core;version="[2.1,3)",
  org.onosproject.event;version="[2.1,3)",
  org.onosproject.net;version="[2.1,3)",
+ org.onosproject.net.device;version="[2.1,3)",
  org.onosproject.net.flow;version="[2.1,3)",
  org.onosproject.net.flow.criteria;version="[2.1,3)",
  org.onosproject.net.flow.instructions;version="[2.1,3)",
@@ -38,11 +39,20 @@ Import-Package:
  org.onosproject.store.service;version="[2.1,3)",
  org.osgi.service.component;version="[1.4,2)",
  org.slf4j;version="[1.7,2)"
+Provide-Capability: 
+ osgi.service;objectClass:List<String>="org.onosproject.ifwd.ReactiveFor
+ warding",
+ osgi.service;objectClass:List<String>="org.onosproject.ifwd.api.Counter
+ Service"
 Require-Capability: 
  osgi.extender;filter:="(&(osgi.extender=osgi.component)(version>=1.3.0)
  (!(version>=2.0.0)))",
  osgi.service;filter:="(objectClass=org.onosproject.core.CoreService)";e
  ffective:=active,
+ osgi.service;filter:="(objectClass=org.onosproject.ifwd.api.CounterServ
+ ice)";effective:=active,
+ osgi.service;filter:="(objectClass=org.onosproject.net.device.DeviceSer
+ vice)";effective:=active,
  osgi.service;filter:="(objectClass=org.onosproject.net.flow.FlowRuleSer
  vice)";effective:=active,
  osgi.service;filter:="(objectClass=org.onosproject.net.flowobjective.Fl
@@ -56,5 +66,6 @@ Require-Capability:
  osgi.service;filter:="(objectClass=org.onosproject.store.service.Storag
  eService)";effective:=active,
  osgi.ee;filter:="(&(osgi.ee=JavaSE)(version=1.8))"
-Service-Component: OSGI-INF/org.onosproject.ifwd.ReactiveForwarding.xml
+Service-Component: OSGI-INF/org.onosproject.ifwd.PacketInCounter.xml,OSG
+ I-INF/org.onosproject.ifwd.ReactiveForwarding.xml
 Tool: Bnd-3.5.0.201709291849

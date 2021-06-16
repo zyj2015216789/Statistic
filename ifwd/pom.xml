@@ -37,8 +37,7 @@
         <onos.app.name>org.onosproject.ifwd</onos.app.name>
         <onos.app.origin>ON.Lab</onos.app.origin>
         <onos.app.title>Reactive Forwarding App (Intent)</onos.app.title>
-        <onos.app.category>Traffic Steering</onos.app.category>
-        <onos.app.url>http://onosproject.org</onos.app.url>
+        <onos.app.category>app</onos.app.category>
     </properties>
 
     <dependencies>
@@ -127,6 +126,11 @@
             <groupId>org.apache.karaf.system</groupId>
             <artifactId>org.apache.karaf.system.core</artifactId>
             <version>4.2.2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.karaf.shell</groupId>
+            <artifactId>org.apache.karaf.shell.core</artifactId>
+            <version>4.2.9</version>
         </dependency>
         <dependency>
             <groupId>org.apache.servicemix.bundles</groupId>

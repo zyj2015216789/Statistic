@@ -41,6 +41,7 @@ import org.onosproject.net.HostId;
 import org.onosproject.net.Link;
 import org.onosproject.net.Path;
 import org.onosproject.net.PortNumber;
+import org.onosproject.net.device.DeviceService;
 import org.onosproject.net.flow.DefaultTrafficSelector;
 import org.onosproject.net.flow.DefaultTrafficTreatment;
 import org.onosproject.net.flow.FlowEntry;
@@ -121,14 +122,16 @@ import static org.onosproject.ifwd.OsgiPropertyConstants.RECORD_METRICS;
 import static org.onosproject.ifwd.OsgiPropertyConstants.RECORD_METRICS_DEFAULT;
 import static org.onosproject.ifwd.OsgiPropertyConstants.INHERIT_FLOW_TREATMENT;
 import static org.onosproject.ifwd.OsgiPropertyConstants.INHERIT_FLOW_TREATMENT_DEFAULT;
+
+import org.onosproject.ifwd.api.CounterService;
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**
  * Sample reactive forwarding application.
  */
 @Component(
-    immediate = true
-    //service = ReactiveForwarding.class,
+    immediate = true,
+    service = ReactiveForwarding.class
     
 )
 public class ReactiveForwarding {
@@ -153,11 +156,19 @@ public class ReactiveForwarding {
     @Reference(cardinality = ReferenceCardinality.MANDATORY)
     protected CoreService coreService;
 
+    @Reference(cardinality = ReferenceCardinality.MANDATORY)
+    protected DeviceService deviceService;
+
     //@Reference(cardinality = ReferenceCardinality.MANDATORY)
     //protected ComponentConfigService cfgService;
 
     @Reference(cardinality = ReferenceCardinality.MANDATORY)
     protected StorageService storageService;
+
+    @Reference(cardinality = ReferenceCardinality.MANDATORY)
+    protected CounterService packetInCounter;
+
+    private CounterService.Counter globalCounter;
 
     private ReactivePacketProcessor processor = new ReactivePacketProcessor();
 
@@ -225,18 +236,19 @@ public class ReactiveForwarding {
                 .register(ReactiveForwardMetrics.class)
                 .register(MultiValuedTimestamp.class);
         metrics =  storageService.<MacAddress, ReactiveForwardMetrics>eventuallyConsistentMapBuilder()
-                .withName("metrics-ifwd")
+                .withName("metrics-fwd")
                 .withSerializer(metricSerializer)
                 .withTimestampProvider((key, metricsData) -> new
                         MultiValuedTimestamp<>(new WallClockTimestamp(), System.nanoTime()))
                 .build();
 
-        blackHoleExecutor = newSingleThreadExecutor(groupedThreads("onos/app/ifwd",
+        blackHoleExecutor = newSingleThreadExecutor(groupedThreads("ifwd",
                                                                    "black-hole-fixer",
                                                                    log));
 
         //cfgService.registerProperties(getClass());
         appId = coreService.registerApplication("org.onosproject.ifwd");
+        //globalCounter = packetInCounter.getCommonCounter("global pkt-in");
 
         packetService.addProcessor(processor, PacketProcessor.director(2));
         topologyService.addListener(topologyListener);
@@ -303,160 +315,160 @@ public class ReactiveForwarding {
         Boolean packetOutOnlyEnabled =
                 Tools.isPropertyEnabled(properties, PACKET_OUT_ONLY);
         if (packetOutOnlyEnabled == null) {
-            log.info("Packet-out is not configured, " +
-                     "using current value of {}", packetOutOnly);
+            // log.info("Packet-out is not configured, " +
+            //          "using current value of {}", packetOutOnly);
         } else {
             packetOutOnly = packetOutOnlyEnabled;
-            log.info("Configured. Packet-out only forwarding is {}",
-                    packetOutOnly ? "enabled" : "disabled");
+            // log.info("Configured. Packet-out only forwarding is {}",
+            //         packetOutOnly ? "enabled" : "disabled");
         }
 
         Boolean packetOutOfppTableEnabled =
                 Tools.isPropertyEnabled(properties, PACKET_OUT_OFPP_TABLE);
         if (packetOutOfppTableEnabled == null) {
-            log.info("OFPP_TABLE port is not configured, " +
-                     "using current value of {}", packetOutOfppTable);
+            // log.info("OFPP_TABLE port is not configured, " +
+            //          "using current value of {}", packetOutOfppTable);
         } else {
             packetOutOfppTable = packetOutOfppTableEnabled;
-            log.info("Configured. Forwarding using OFPP_TABLE port is {}",
-                    packetOutOfppTable ? "enabled" : "disabled");
+            // log.info("Configured. Forwarding using OFPP_TABLE port is {}",
+            //         packetOutOfppTable ? "enabled" : "disabled");
         }
 
         Boolean ipv6ForwardingEnabled =
                 Tools.isPropertyEnabled(properties, IPV6_FORWARDING);
         if (ipv6ForwardingEnabled == null) {
-            log.info("IPv6 forwarding is not configured, " +
-                     "using current value of {}", ipv6Forwarding);
+            // log.info("IPv6 forwarding is not configured, " +
+            //          "using current value of {}", ipv6Forwarding);
         } else {
             ipv6Forwarding = ipv6ForwardingEnabled;
-            log.info("Configured. IPv6 forwarding is {}",
-                    ipv6Forwarding ? "enabled" : "disabled");
+            // log.info("Configured. IPv6 forwarding is {}",
+            //         ipv6Forwarding ? "enabled" : "disabled");
         }
 
         Boolean matchDstMacOnlyEnabled =
                 Tools.isPropertyEnabled(properties, MATCH_DST_MAC_ONLY);
         if (matchDstMacOnlyEnabled == null) {
-            log.info("Match Dst MAC is not configured, " +
-                     "using current value of {}", matchDstMacOnly);
+            // log.info("Match Dst MAC is not configured, " +
+            //          "using current value of {}", matchDstMacOnly);
         } else {
             matchDstMacOnly = matchDstMacOnlyEnabled;
-            log.info("Configured. Match Dst MAC Only is {}",
-                    matchDstMacOnly ? "enabled" : "disabled");
+            // log.info("Configured. Match Dst MAC Only is {}",
+            //         matchDstMacOnly ? "enabled" : "disabled");
         }
 
         Boolean matchVlanIdEnabled =
                 Tools.isPropertyEnabled(properties, MATCH_VLAN_ID);
         if (matchVlanIdEnabled == null) {
-            log.info("Matching Vlan ID is not configured, " +
-                     "using current value of {}", matchVlanId);
+            // log.info("Matching Vlan ID is not configured, " +
+            //          "using current value of {}", matchVlanId);
         } else {
             matchVlanId = matchVlanIdEnabled;
-            log.info("Configured. Matching Vlan ID is {}",
-                    matchVlanId ? "enabled" : "disabled");
+            // log.info("Configured. Matching Vlan ID is {}",
+            //         matchVlanId ? "enabled" : "disabled");
         }
 
         Boolean matchIpv4AddressEnabled =
                 Tools.isPropertyEnabled(properties, MATCH_IPV4_ADDRESS);
         if (matchIpv4AddressEnabled == null) {
-            log.info("Matching IPv4 Address is not configured, " +
-                     "using current value of {}", matchIpv4Address);
+            // log.info("Matching IPv4 Address is not configured, " +
+            //          "using current value of {}", matchIpv4Address);
         } else {
             matchIpv4Address = matchIpv4AddressEnabled;
-            log.info("Configured. Matching IPv4 Addresses is {}",
-                    matchIpv4Address ? "enabled" : "disabled");
+            // log.info("Configured. Matching IPv4 Addresses is {}",
+            //         matchIpv4Address ? "enabled" : "disabled");
         }
 
         Boolean matchIpv4DscpEnabled =
                 Tools.isPropertyEnabled(properties, MATCH_IPV4_DSCP);
         if (matchIpv4DscpEnabled == null) {
-            log.info("Matching IPv4 DSCP and ECN is not configured, " +
-                     "using current value of {}", matchIpv4Dscp);
+            // log.info("Matching IPv4 DSCP and ECN is not configured, " +
+            //          "using current value of {}", matchIpv4Dscp);
         } else {
             matchIpv4Dscp = matchIpv4DscpEnabled;
-            log.info("Configured. Matching IPv4 DSCP and ECN is {}",
-                    matchIpv4Dscp ? "enabled" : "disabled");
+            // log.info("Configured. Matching IPv4 DSCP and ECN is {}",
+            //         matchIpv4Dscp ? "enabled" : "disabled");
         }
 
         Boolean matchIpv6AddressEnabled =
                 Tools.isPropertyEnabled(properties, MATCH_IPV6_ADDRESS);
         if (matchIpv6AddressEnabled == null) {
-            log.info("Matching IPv6 Address is not configured, " +
-                     "using current value of {}", matchIpv6Address);
+            // log.info("Matching IPv6 Address is not configured, " +
+            //          "using current value of {}", matchIpv6Address);
         } else {
             matchIpv6Address = matchIpv6AddressEnabled;
-            log.info("Configured. Matching IPv6 Addresses is {}",
-                    matchIpv6Address ? "enabled" : "disabled");
+            // log.info("Configured. Matching IPv6 Addresses is {}",
+            //         matchIpv6Address ? "enabled" : "disabled");
         }
 
         Boolean matchIpv6FlowLabelEnabled =
                 Tools.isPropertyEnabled(properties, MATCH_IPV6_FLOW_LABEL);
         if (matchIpv6FlowLabelEnabled == null) {
-            log.info("Matching IPv6 FlowLabel is not configured, " +
-                     "using current value of {}", matchIpv6FlowLabel);
+            // log.info("Matching IPv6 FlowLabel is not configured, " +
+            //          "using current value of {}", matchIpv6FlowLabel);
         } else {
             matchIpv6FlowLabel = matchIpv6FlowLabelEnabled;
-            log.info("Configured. Matching IPv6 FlowLabel is {}",
-                    matchIpv6FlowLabel ? "enabled" : "disabled");
+            // log.info("Configured. Matching IPv6 FlowLabel is {}",
+            //         matchIpv6FlowLabel ? "enabled" : "disabled");
         }
 
         Boolean matchTcpUdpPortsEnabled =
                 Tools.isPropertyEnabled(properties, MATCH_TCP_UDP_PORTS);
         if (matchTcpUdpPortsEnabled == null) {
-            log.info("Matching TCP/UDP fields is not configured, " +
-                     "using current value of {}", matchTcpUdpPorts);
+            // log.info("Matching TCP/UDP fields is not configured, " +
+            //          "using current value of {}", matchTcpUdpPorts);
         } else {
             matchTcpUdpPorts = matchTcpUdpPortsEnabled;
-            log.info("Configured. Matching TCP/UDP fields is {}",
-                    matchTcpUdpPorts ? "enabled" : "disabled");
+            // log.info("Configured. Matching TCP/UDP fields is {}",
+            //         matchTcpUdpPorts ? "enabled" : "disabled");
         }
 
         Boolean matchIcmpFieldsEnabled =
                 Tools.isPropertyEnabled(properties, MATCH_ICMP_FIELDS);
         if (matchIcmpFieldsEnabled == null) {
-            log.info("Matching ICMP (v4 and v6) fields is not configured, " +
-                     "using current value of {}", matchIcmpFields);
+            // log.info("Matching ICMP (v4 and v6) fields is not configured, " +
+            //          "using current value of {}", matchIcmpFields);
         } else {
             matchIcmpFields = matchIcmpFieldsEnabled;
-            log.info("Configured. Matching ICMP (v4 and v6) fields is {}",
-                    matchIcmpFields ? "enabled" : "disabled");
+            // log.info("Configured. Matching ICMP (v4 and v6) fields is {}",
+            //         matchIcmpFields ? "enabled" : "disabled");
         }
 
         Boolean ignoreIpv4McastPacketsEnabled =
                 Tools.isPropertyEnabled(properties, IGNORE_IPV4_MCAST_PACKETS);
         if (ignoreIpv4McastPacketsEnabled == null) {
-            log.info("Ignore IPv4 multi-cast packet is not configured, " +
-                     "using current value of {}", ignoreIPv4Multicast);
+            // log.info("Ignore IPv4 multi-cast packet is not configured, " +
+            //          "using current value of {}", ignoreIPv4Multicast);
         } else {
             ignoreIPv4Multicast = ignoreIpv4McastPacketsEnabled;
-            log.info("Configured. Ignore IPv4 multicast packets is {}",
-                    ignoreIPv4Multicast ? "enabled" : "disabled");
+            // log.info("Configured. Ignore IPv4 multicast packets is {}",
+            //         ignoreIPv4Multicast ? "enabled" : "disabled");
         }
         Boolean recordMetricsEnabled =
                 Tools.isPropertyEnabled(properties, RECORD_METRICS);
         if (recordMetricsEnabled == null) {
-            log.info("IConfigured. Ignore record metrics  is {} ," +
-                    "using current value of {}", recordMetrics);
+            // log.info("IConfigured. Ignore record metrics  is {} ," +
+            //         "using current value of {}", recordMetrics);
         } else {
             recordMetrics = recordMetricsEnabled;
-            log.info("Configured. record metrics  is {}",
-                    recordMetrics ? "enabled" : "disabled");
+            // log.info("Configured. record metrics  is {}",
+            //         recordMetrics ? "enabled" : "disabled");
         }
 
         flowTimeout = Tools.getIntegerProperty(properties, FLOW_TIMEOUT, FLOW_TIMEOUT_DEFAULT);
-        log.info("Configured. Flow Timeout is configured to {} seconds", flowTimeout);
+        //log.info("Configured. Flow Timeout is configured to {} seconds", flowTimeout);
 
         flowPriority = Tools.getIntegerProperty(properties, FLOW_PRIORITY, FLOW_PRIORITY_DEFAULT);
-        log.info("Configured. Flow Priority is configured to {}", flowPriority);
+       // log.info("Configured. Flow Priority is configured to {}", flowPriority);
 
         Boolean inheritFlowTreatmentEnabled =
                 Tools.isPropertyEnabled(properties, INHERIT_FLOW_TREATMENT);
         if (inheritFlowTreatmentEnabled == null) {
-            log.info("Inherit flow treatment is not configured, " +
-                             "using current value of {}", inheritFlowTreatment);
+            // log.info("Inherit flow treatment is not configured, " +
+            //                  "using current value of {}", inheritFlowTreatment);
         } else {
             inheritFlowTreatment = inheritFlowTreatmentEnabled;
-            log.info("Configured. Inherit flow treatment is {}",
-                     inheritFlowTreatment ? "enabled" : "disabled");
+            // log.info("Configured. Inherit flow treatment is {}",
+            //          inheritFlowTreatment ? "enabled" : "disabled");
         }
     }
 

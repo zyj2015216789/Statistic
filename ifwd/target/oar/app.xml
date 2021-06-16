@@ -15,7 +15,7 @@
   ~ limitations under the License.
   -->
 <app name="org.onosproject.ifwd" origin="ON.Lab" version="1.8.0-SNAPSHOT"
-        title="Reactive Forwarding App (Intent)" category="Traffic Steering" url="http://onosproject.org"
+        title="Reactive Forwarding App (Intent)" category="app" url="http://onosproject.org"
         featuresRepo="mvn:org.onosproject/onos-app-ifwd/1.8.0-SNAPSHOT/xml/features"
         features="onos-app-ifwd" apps="">
     <description>Reactive forwarding application using intent service (experimental)</description>

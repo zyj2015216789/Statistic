@@ -14,18 +14,19 @@
  * limitations under the License.
  */
 package org.onosproject.ifwd;
+
+
 import org.apache.karaf.shell.api.action.Command;
 import org.apache.karaf.shell.api.action.Completion;
 import org.apache.karaf.shell.api.action.lifecycle.Service;
 import org.onosproject.cli.AbstractShellCommand;
 import org.apache.karaf.shell.api.action.Argument;
 import org.onlab.packet.MacAddress;
-
 /**
  * Sample reactive forwarding application.
  */
 @Service
-@Command(scope = "onos", name = "reactive-ifwd-metrics",
+@Command(scope = "onos", name = "Detection",
         description = "List all the metrics of reactive fwd app based on mac address")
 public class ReactiveForwardingCommand extends AbstractShellCommand {
     @Argument(index = 0, name = "mac", description = "One Mac Address",

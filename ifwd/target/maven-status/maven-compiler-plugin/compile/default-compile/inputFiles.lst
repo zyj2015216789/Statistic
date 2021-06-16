@@ -1,6 +1,9 @@
 /home/onos/onos-app-samples/ifwd/src/main/java/org/onosproject/ifwd/MacAddressCompleter.java
+/home/onos/onos-app-samples/ifwd/src/main/java/org/onosproject/ifwd/PacketInCounter.java
 /home/onos/onos-app-samples/ifwd/src/main/java/org/onosproject/ifwd/OsgiPropertyConstants.java
 /home/onos/onos-app-samples/ifwd/src/main/java/org/onosproject/ifwd/ReactiveForwardingCommand.java
 /home/onos/onos-app-samples/ifwd/src/main/java/org/onosproject/ifwd/package-info.java
 /home/onos/onos-app-samples/ifwd/src/main/java/org/onosproject/ifwd/ReactiveForwarding.java
+/home/onos/onos-app-samples/ifwd/src/main/java/org/onosproject/ifwd/cli/package-info.java
 /home/onos/onos-app-samples/ifwd/src/main/java/org/onosproject/ifwd/ReactiveForwardMetrics.java
+/home/onos/onos-app-samples/ifwd/src/main/java/org/onosproject/ifwd/api/CounterService.java
