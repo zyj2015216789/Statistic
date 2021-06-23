@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  ~ Copyright 2014-2016 Open Networking Foundation
+  ~ Copyright 2019 Open Networking Foundation
   ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");
   ~ you may not use this file except in compliance with the License.
@@ -14,31 +14,34 @@
   ~ See the License for the specific language governing permissions and
   ~ limitations under the License.
   -->
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <parent>
-        <groupId>org.onosproject</groupId>
-        <artifactId>onos-dependencies</artifactId>
-        <version>1.8.0</version>
-        <relativePath/><!-- parent is remote -->
-    </parent>
-
-    <artifactId>onos-app-ifwd</artifactId>
-    <version>1.8.0-SNAPSHOT</version>
+    <groupId>org.onosproject</groupId>
+    <artifactId>ifwd</artifactId>
+    <version>1.0.12</version>
     <packaging>bundle</packaging>
 
-    <description>Reactive forwarding application using intent service (experimental)</description>
+    <description>ONOS OSGi bundle archetype</description>
+    <url>http://onosproject.org</url>
 
     <properties>
-        <onos.version>2.1.0-rc7</onos.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <onos.app.name>org.onosproject.ifwd</onos.app.name>
-        <onos.app.origin>ON.Lab</onos.app.origin>
-        <onos.app.title>Reactive Forwarding App (Intent)</onos.app.title>
-        <onos.app.category>app</onos.app.category>
+        <onos.app.title>Defend Forwarding App</onos.app.title>
+        <onos.app.origin>onosproject</onos.app.origin>
+        <onos.app.category>Security</onos.app.category>
+        <onos.app.url>https://gitlab.loveacat.xyz</onos.app.url>
+        <onos.app.readme>ONOS OSGi bundle archetype.</onos.app.readme>
+        <onos.version>2.1.0-rc7</onos.version>
     </properties>
+
+    <distributionManagement>
+        <repository>
+            <id>local-repository</id>
+            <url>file:${settings.localRepository}</url>
+        </repository>
+    </distributionManagement>
 
     <dependencies>
         <!-- https://mvnrepository.com/artifact/org.onosproject/onos-core-net -->
@@ -126,11 +129,6 @@
             <groupId>org.apache.karaf.system</groupId>
             <artifactId>org.apache.karaf.system.core</artifactId>
             <version>4.2.2</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.karaf.shell</groupId>
-            <artifactId>org.apache.karaf.shell.core</artifactId>
-            <version>4.2.9</version>
         </dependency>
         <dependency>
             <groupId>org.apache.servicemix.bundles</groupId>
@@ -286,7 +284,4 @@
         </plugins>
     </build>
 
-
 </project>
-
-

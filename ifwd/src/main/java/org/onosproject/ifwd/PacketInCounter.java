@@ -15,7 +15,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import static org.slf4j.LoggerFactory.getLogger;
 
 @Component(
-        immediate = true
+        immediate = true,
+        service = PacketInCounter.class
 )
 public class PacketInCounter implements CounterService {
     private final Logger log = getLogger(getClass());

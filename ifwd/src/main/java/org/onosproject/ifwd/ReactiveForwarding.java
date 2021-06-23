@@ -34,6 +34,9 @@ import org.onosproject.cfg.ComponentConfigService;
 import org.onosproject.core.ApplicationId;
 import org.onosproject.core.CoreService;
 import org.onosproject.event.Event;
+
+import org.onosproject.net.device.DeviceService;
+import org.onosproject.net.Device;
 import org.onosproject.net.ConnectPoint;
 import org.onosproject.net.DeviceId;
 import org.onosproject.net.Host;
@@ -48,6 +51,7 @@ import org.onosproject.net.flow.FlowRule;
 import org.onosproject.net.flow.FlowRuleService;
 import org.onosproject.net.flow.TrafficSelector;
 import org.onosproject.net.flow.TrafficTreatment;
+import org.onosproject.net.flow.FlowEntry.FlowEntryState;
 import org.onosproject.net.flow.criteria.Criterion;
 import org.onosproject.net.flow.criteria.EthCriterion;
 import org.onosproject.net.flow.instructions.Instruction;
@@ -79,6 +83,11 @@ import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.slf4j.Logger;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.Writer;
 import java.util.Dictionary;
 import java.util.HashMap;
 import java.util.List;
@@ -86,6 +95,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static org.onlab.util.Tools.groupedThreads;
@@ -123,6 +133,8 @@ import static org.onosproject.ifwd.OsgiPropertyConstants.INHERIT_FLOW_TREATMENT;
 import static org.onosproject.ifwd.OsgiPropertyConstants.INHERIT_FLOW_TREATMENT_DEFAULT;
 import static org.slf4j.LoggerFactory.getLogger;
 
+
+
 /**
  * Sample reactive forwarding application.
  */
@@ -151,6 +163,9 @@ import static org.slf4j.LoggerFactory.getLogger;
 public class ReactiveForwarding {
 
     private final Logger log = getLogger(getClass());
+
+    @Reference(cardinality = ReferenceCardinality.MANDATORY)
+    protected DeviceService deviceService;
 
     @Reference(cardinality = ReferenceCardinality.MANDATORY)
     protected TopologyService topologyService;
@@ -234,10 +249,24 @@ public class ReactiveForwarding {
 
     private ExecutorService blackHoleExecutor;
 
+    /**
+     * flag: &&&
+     */
+    private static int SHORT_FLOW_THRESHOLE = 3;
+    // private long PacketIn = null;
+    // private Long ShortF = null;
+    // private Long TotalF = null;
+    private static final long INTERVAL = 3;
+    //ConcurrentMap<DeviceId, Counter> statistics;
+
+    HashMap<DeviceId, Long>shortFlow = new HashMap<DeviceId, Long>();
+    HashMap<DeviceId, Long>ruleCount = new HashMap<DeviceId, Long>();
+    HashMap<DeviceId, Long> packetCount = new HashMap<DeviceId, Long>();
+    //ScheduledExecutorService scheduledExecutorService;
 
     @Activate
     public void activate(ComponentContext context) {
-        log.info("Hello");
+        
         KryoNamespace.Builder metricSerializer = KryoNamespace.newBuilder()
                 .register(KryoNamespaces.API)
                 .register(ReactiveForwardMetrics.class)
@@ -260,7 +289,7 @@ public class ReactiveForwarding {
         topologyService.addListener(topologyListener);
         readComponentConfiguration(context);
         requestIntercepts();
-
+        getStatistic();
         log.info("Started", appId.id());
     }
 
@@ -282,7 +311,91 @@ public class ReactiveForwarding {
         readComponentConfiguration(context);
         requestIntercepts();
     }
+    /**
+     * 
+     * flag &&&
+     */
+     public void getStatistic(){
+        //scheduledExecutorService.scheduleAtFixedRate(todo, 1, INTERVAL, TimeUnit.SECONDS);
 
+        for(int i = 0; i < 10; i++){
+            shortFlow.clear();
+            ruleCount.clear();
+            //packetCount.clear();
+            updateStatistic();
+            try {
+                TimeUnit.SECONDS.sleep(INTERVAL);
+            } catch(Exception e){
+                log.info(e.getMessage());
+            }
+        }
+    }
+    public void updateStatistic(){
+        //log.info("update ");
+        Iterable<Device> devices = deviceService.getAvailableDevices(Device.Type.SWITCH);
+            
+        for(Device d: devices){
+            long shortCount = 0;
+            DeviceId id = d.id();
+            long ruleDevice = (long)(flowRuleService.getFlowRuleCount(id,FlowEntryState.ADDED));
+            ruleCount.put(id, ruleDevice);
+            Iterable<FlowEntry> flowEntry = flowRuleService.getFlowEntriesByState(id,FlowEntryState.ADDED);
+            for(FlowEntry f: flowEntry){
+                    // live type L short, long 
+                    //f.liveType();
+                    // matched packet
+                if(f.packets() < SHORT_FLOW_THRESHOLE){
+                    shortCount++;
+                }
+                //log.info("zyj:every flow mathch packet:{}",f.packets());
+                    
+            }
+            shortFlow.put(id, shortCount);
+
+        }
+
+        try{
+            generateDoc();
+        } catch(Exception e){
+            log.info("generatorDoc failed ---|--Error Code");
+        }
+    }
+     public void generateDoc(){
+        File file = new File("/home/onos/onos/feature_static.txt");
+        if(!file.exists() && !file.isDirectory()){
+            file.mkdir();
+            try {
+                file.createNewFile();
+            } catch (IOException e){
+                e.printStackTrace();
+            }
+        }
+        try{
+            Writer out = new FileWriter(file,true);
+            BufferedWriter bw = new BufferedWriter(out);
+
+            for(DeviceId device: ruleCount.keySet()){
+                bw.write(packetCount.get(device) +",");
+                bw.write(shortFlow.get(device) +",");
+                bw.write(ruleCount.get(device) +"\n");
+                bw.flush();
+            }
+            bw.newLine();
+            bw.close();
+            out.close();
+        } catch (IOException e){
+            e.printStackTrace();
+        }
+ 
+     }
+     public void updatePacketIn(DeviceId device){
+        
+        if(packetCount.containsKey(device)){
+            packetCount.put(device, packetCount.get(device) + 1);
+        }else {
+            packetCount.put(device, (long) 0);
+        }
+     }
     /**
      * Request packet in via packet service.
      */
@@ -487,23 +600,28 @@ public class ReactiveForwarding {
         public void process(PacketContext context) {
             // Stop processing if the packet has been handled, since we
             // can't do any more to it.
-
+            
             if (context.isHandled()) {
                 return;
             }
-
+            
             InboundPacket pkt = context.inPacket();
             Ethernet ethPkt = pkt.parsed();
-
+           
             if (ethPkt == null) {
                 return;
             }
+            
+            /**
+             * flag: &&&
+             */
+            
 
             MacAddress macAddress = ethPkt.getSourceMAC();
             ReactiveForwardMetrics macMetrics = null;
             macMetrics = createCounter(macAddress);
             inPacket(macMetrics);
-
+            
             // Bail if this is deemed to be a control packet.
             if (isControlPacket(ethPkt)) {
                 droppedPacket(macMetrics);
@@ -531,13 +649,16 @@ public class ReactiveForwarding {
                 }
             }
 
+            
             // Do we know who this is for? If not, flood and bail.
             Host dst = hostService.getHost(id);
             if (dst == null) {
                 flood(context, macMetrics);
                 return;
             }
-
+            // &&&
+            DeviceId device = pkt.receivedFrom().deviceId();
+            updatePacketIn(device);
             // Are we on an edge switch that our destination is on? If so,
             // simply forward out to the destination and bail.
             if (pkt.receivedFrom().deviceId().equals(dst.location().deviceId())) {
@@ -568,7 +689,7 @@ public class ReactiveForwarding {
                 flood(context, macMetrics);
                 return;
             }
-
+            
             // Otherwise forward and be done with it.
             installRule(context, path.src().port(), macMetrics);
         }
@@ -991,3 +1112,4 @@ public class ReactiveForwarding {
         }
     }
 }
+

@@ -25,8 +25,9 @@ import org.onlab.packet.MacAddress;
 /**
  * Sample reactive forwarding application.
  */
+
 @Service
-@Command(scope = "onos", name = "Detection",
+@Command(scope = "onos", name = "reac",
         description = "List all the metrics of reactive fwd app based on mac address")
 public class ReactiveForwardingCommand extends AbstractShellCommand {
     @Argument(index = 0, name = "mac", description = "One Mac Address",
