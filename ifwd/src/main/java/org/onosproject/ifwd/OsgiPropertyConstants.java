@@ -11,7 +11,7 @@ public class OsgiPropertyConstants {
     static final boolean PACKET_OUT_OFPP_TABLE_DEFAULT = false;
 
     static final String FLOW_TIMEOUT = "flowTimeout";
-    static final int FLOW_TIMEOUT_DEFAULT = 5;
+    static final int FLOW_TIMEOUT_DEFAULT = 10;
 
     static final String FLOW_PRIORITY = "flowPriority";
     static final int FLOW_PRIORITY_DEFAULT = 10;

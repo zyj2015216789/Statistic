@@ -375,10 +375,11 @@ public class ReactiveForwarding {
             BufferedWriter bw = new BufferedWriter(out);
 
             for(DeviceId device: ruleCount.keySet()){
-                bw.write(packetCount.get(device) +",");
-                bw.write(shortFlow.get(device) +",");
-                bw.write(ruleCount.get(device) +"\n");
-                bw.flush();
+               // bw.write(device.toString() + ",");
+                 bw.write(packetCount.get(device) +",");
+                 bw.write(shortFlow.get(device) +",");
+                 bw.write(ruleCount.get(device) +"\n");
+                 bw.flush();
             }
             bw.newLine();
             bw.close();
